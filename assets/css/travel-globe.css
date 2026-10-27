@@ -1,0 +1,41 @@
+/* A quiet, tactile atlas. Geographic data and renderer are served locally. */
+.travel-globe { grid-column: 1 / -1; position: relative; isolation: isolate; height: clamp(480px, 50vw, 660px); margin-top: 24px; --globe-blue: #007aff; --globe-orange: #f47a36; }
+.travel-globe__viewport { position: absolute; inset: 0; overflow: hidden; border-radius: 32px; }
+.travel-globe__viewport::after { content: ''; position: absolute; z-index: 2; inset: auto 0 0; height: 28%; background: linear-gradient(transparent, var(--paper) 90%); pointer-events: none; }
+.travel-globe__canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y pinch-zoom; }
+.travel-globe__canvas:active { cursor: grabbing; }
+.travel-globe__labels { position: absolute; inset: 0; pointer-events: none; }
+/* Small icons at their geographic coordinates; no permanent text labels. */
+.globe-place { position: absolute; z-index: 3; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: auto; opacity: 0; transition: opacity .2s; }
+.globe-place svg { width: 22px; height: 22px; overflow: visible; fill: var(--globe-orange); stroke: #fff; stroke-width: 1.3; stroke-linejoin: round; filter: drop-shadow(0 1px 2px #52260020); transition: filter .2s; }
+.globe-place--home svg { width: 22px; height: 26px; fill: var(--globe-orange); filter: drop-shadow(0 1px 2px #52260020); }
+.globe-place--home circle { fill: white; stroke: none; }
+.globe-place:hover svg { filter: drop-shadow(0 2px 4px #152e4d50); }
+.globe-tooltip { position: absolute; z-index: 5; width: max-content; max-width: calc(100% - 24px); padding: 10px 15px; border: 1px solid #ffffffbb; border-radius: 14px; background: #fffffff5; box-shadow: 0 5px 24px #182e4c15; pointer-events: none; }
+.globe-tooltip strong { display: block; font-weight: 550; font-size: 13px; line-height: 1.4; }
+.globe-tooltip span { display: block; margin-top: 2px; color: var(--secondary); font-size: 10px; line-height: 1.4; }
+.travel-globe__controls { position: absolute; z-index: 4; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; max-width: calc(100% - 16px); }
+.globe-picker, .globe-zoom { height: 46px; display: flex; align-items: center; background: #ffffffd9; border: 1px solid #ffffff; border-radius: 16px; box-shadow: 0 4px 18px #182e4c07; backdrop-filter: blur(16px); }
+.globe-picker { position: relative; width: 220px; min-width: 0; padding: 0 12px; gap: 9px; }
+.globe-picker select { appearance: none; position: absolute; inset: 0; width: 100%; border: 0; border-radius: inherit; padding: 0 34px 0 39px; color: var(--ink); font: 400 12px var(--font); background: transparent; cursor: pointer; text-overflow: ellipsis; }
+.globe-picker svg { flex: 0 0 18px; pointer-events: none; color: var(--secondary); }
+.globe-picker svg:last-child { margin-left: auto; width: 14px; flex-basis: 14px; }
+.travel-globe__controls svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.globe-zoom { padding: 2px; gap: 0; }
+.globe-zoom button { display: grid; place-items: center; width: 40px; height: 40px; border: none; border-radius: 12px; background: transparent; }
+.globe-zoom button:hover { background: #007aff0b; color: var(--globe-blue); }
+.globe-zoom button:disabled { opacity: .3; cursor: default; }
+.travel-globe__fallback { position: absolute; inset: 40% 24px auto; text-align: center; color: var(--secondary); font-size: 14px; }
+.travel-globe:not([data-ready]) .travel-globe__labels { visibility: hidden; }
+[data-theme='dark'] .globe-tooltip { background: #272a30ed; border-color: #ffffff12; box-shadow: 0 6px 24px #0002; }
+[data-theme='dark'] .globe-picker, [data-theme='dark'] .globe-zoom { background: #272a30db; border-color: #ffffff12; }
+[data-theme='dark'] .globe-picker option, [data-theme='dark'] .globe-picker optgroup { background: #272a30; color: #f5f5f7; }
+@media (max-width: 700px) {
+  .travel-globe { height: 400px; margin-top: 0; }
+  .travel-globe__viewport { inset: 0 -8px; border-radius: 20px; }
+  .travel-globe__controls { gap: 8px; max-width: 100%; width: max-content; bottom: 4px; }
+  .globe-picker { width: 186px; }
+  .globe-zoom button { width: 36px; }
+}
+@media (max-width: 370px) { .globe-picker { width: 158px; } .globe-zoom button { width: 34px; } }
+@media (prefers-reduced-motion: reduce) { .globe-place { transition: none; } }

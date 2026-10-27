@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A personal atlas in motion. An interactive, self-hosted travel globe built with vanilla JavaScript, Canvas and D3 Geo.">
+  <meta name="theme-color" content="#f5f5f7">
+  <title>Travel Globe — Alexander Lehmann</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/demo.css">
+  <link rel="stylesheet" href="assets/css/travel-globe.css">
+  <script src="assets/js/demo.js" defer></script>
+  <script src="assets/js/travel-globe.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#globe">Skip to globe</a>
+  <header class="demo-header">
+    <a class="wordmark" href="./" aria-label="Travel Globe home"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>Travel Globe</a>
+    <div class="demo-settings">
+      <div class="segmented" role="group" aria-label="Appearance">
+        <button type="button" data-theme-choice="light" aria-label="Light theme" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+        <button type="button" data-theme-choice="dark" aria-label="Dark theme" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/></svg></button>
+      </div>
+      <div class="segmented" role="group" aria-label="Language"><button type="button" data-language-choice="en" aria-pressed="true">EN</button><button type="button" data-language-choice="de" aria-pressed="false">DE</button></div>
+    </div>
+  </header>
+  <main id="globe">
+    <div class="demo-intro"><p class="eyebrow" data-copy="eyebrow">A personal atlas</p><h1 data-copy="heading">A few places.<br>A world of memories.</h1><p class="intro-copy" data-copy="intro">Where I’m from, where I am, and a few stops along the way.</p></div>
+    <figure class="travel-globe" data-travel-globe aria-label="Places I’ve been">
+        <div class="travel-globe__viewport">
+          <canvas class="travel-globe__canvas" aria-hidden="true"></canvas>
+          <div class="travel-globe__labels">
+            <button class="globe-place globe-place--origin" type="button" data-globe-special="origin" aria-label="Astana — where I’m from"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.52l-5.88 3.09 1.12-6.55-4.76-4.64 6.58-.96Z"/></svg></button>
+            <button class="globe-place globe-place--home" type="button" data-globe-special="home" aria-label="Güstrow — home now"><svg viewBox="0 0 24 28" aria-hidden="true"><path d="M12 26S3 16.6 3 10a9 9 0 0 1 18 0c0 6.6-9 16-9 16Z"/><circle cx="12" cy="10" r="3"/></svg></button>
+            <div class="globe-tooltip" hidden><strong></strong><span></span></div>
+          </div>
+        </div>
+        <div class="travel-globe__controls">
+          <label class="globe-picker"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z"/></svg><select data-globe-picker aria-label="Explore a place"><option value="">Places I’ve been</option></select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg></label>
+          <div class="globe-zoom" role="group" aria-label="Globe controls">
+            <button type="button" data-globe-zoom="-1" aria-label="Zoom out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+            <button type="button" data-globe-zoom="1" aria-label="Zoom in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg></button>
+            <button type="button" data-globe-reset aria-label="Reset globe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 7M4 5v5h5"/></svg></button>
+          </div>
+        </div>
+        <p class="travel-globe__status sr-only" role="status"></p>
+        <noscript><p class="travel-globe__fallback">Astana — where I’m from. Güstrow — home now. Enable JavaScript to explore the globe.</p></noscript>
+      </figure>
+  </main>
+  <footer class="demo-footer"><a href="https://alex-lehmann.com/">Alexander Lehmann <span aria-hidden="true">↗</span></a><div><a href="https://github.com/alxlehmann/travel-globe" data-copy="source">View source</a><a href="https://www.naturalearthdata.com/about/terms-of-use/" data-copy="map">Map data</a></div></footer>
+</body>
+</html>
