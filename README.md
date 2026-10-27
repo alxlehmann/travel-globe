@@ -2,6 +2,8 @@
 
 **A personal atlas, made for the web.**
 
+[Open the live demo →](https://alxlehmann.github.io/travel-globe/)
+
 An interactive globe for the places that stay with you. Soft land relief, quiet country borders, and a constellation of places visited — with a star for your hometown and a pin for where you live now.
 
 Built with vanilla JavaScript, Canvas 2D, and D3 Geo. Self-hosted from coastlines to city coordinates. No API keys, map subscriptions, framework, or build step.
