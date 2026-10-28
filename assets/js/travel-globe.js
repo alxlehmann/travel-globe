@@ -30,12 +30,19 @@
     de: { title: 'Orte, an denen ich war', picker: 'Einen Ort entdecken', origin: 'Meine Heimat', home: 'Heute zu Hause', controls: 'Globus steuern', in: 'Vergrößern', out: 'Verkleinern', reset: 'Globus zurücksetzen', error: 'Der Globus konnte nicht geladen werden. Bitte lade die Seite neu.' }
   };
   let language, words, regions;
-  let cities = [], land, borders, projection, path, visiblePoints = [];
+  let cities = [], land, borders, projection, visiblePoints = [];
   let width = 0, height = 0, radius = 0, ratio = 1;
   let longitude = 32, latitude = 36, zoom = 1, target = null;
   let active = null, hovered = null, pointer = null, interacted = false;
   let visible = false, loaded = false, loading = false, raf = 0, lastFrame = 0, dirty = true;
   let dark = document.documentElement.dataset.theme === 'dark';
+  let flight = null;
+  const flightDuration = 4600;
+  // Cache the map surface so a moving plane does not redraw all geographic paths.
+  const surface = document.createElement('canvas');
+  const surfaceContext = surface.getContext('2d');
+  let surfaceKey = '';
+  const aircraft = new Path2D('M14 0C14-1.4 10-2.1 8-2.1H2L-4-10H-7L-4-2.1H-10L-13-5H-15L-13 0L-15 5H-13L-10 2.1H-4L-7 10H-4L2 2.1H8C10 2.1 14 1.4 14 0Z');
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const name = city => city[language] || city.en;
   const country = city => regions.of(city.country);
@@ -94,7 +101,7 @@
   }
   function showHover(city) {
     clearTimeout(hoverTimer);
-    if (city !== hovered) { hovered = city; dismissed = null; requestDraw(); }
+    if (city !== hovered) { hovered = city; dismissed = null; if (city?.kind === 'origin') startFlight(); requestDraw(); }
   }
   function updatePreview(city) {
     tooltipName.textContent = name(city);
@@ -133,35 +140,132 @@
     if (tooltip.contains(document.activeElement)) picker.focus();
     requestDraw();
   });
+  function drawSurface() {
+    const key = [width,height,ratio,longitude.toFixed(5),latitude.toFixed(5),zoom.toFixed(5),dark].join('|');
+    if (key !== surfaceKey) {
+      surfaceKey = key;
+      if(surface.width !== canvas.width || surface.height !== canvas.height) {
+        surface.width = canvas.width; surface.height = canvas.height;
+      }
+      const g = surfaceContext;
+      g.setTransform(ratio,0,0,ratio,0,0);g.clearRect(0,0,width,height);
+      const surfacePath = d3.geoPath(projection,g);
+      const sphere = r => { const [x,y]=projection.translate();g.beginPath();g.arc(x,y,r,0,Math.PI*2); };
+    const [cx,cy] = projection.translate(), r = radius * zoom;
+    const atmosphere = g.createRadialGradient(cx,cy,r-1,cx,cy,r+12);
+    atmosphere.addColorStop(0,dark?'#8bbaff12':'#ffffff88');
+    atmosphere.addColorStop(1,'#ffffff00');
+    sphere(r+12);g.fillStyle=atmosphere;g.fill();
+    const ocean = g.createRadialGradient(cx-r*.35,cy-r*.5,r*.04,cx,cy,r);
+    ocean.addColorStop(0, dark ? '#303741' : '#ffffff');
+    ocean.addColorStop(.75,dark ? '#20262e' : '#fbfcfd');
+    ocean.addColorStop(1,dark ? '#171d25' : '#e7ebf0');
+    g.save(); sphere(r); g.fillStyle=ocean; g.fill(); g.clip();
+    g.save(); g.translate(0,1.2); g.beginPath(); surfacePath(land); g.fillStyle=dark?'#10161b':'#cdd3db'; g.fill(); g.restore();
+    g.beginPath(); surfacePath(land); g.fillStyle=dark?'#424d5c':'#e0e6eb'; g.fill();
+    g.strokeStyle=dark?'#59657360':'#ffffffaa'; g.lineWidth=.55; g.stroke();
+    if (borders) {
+      g.save(); g.beginPath(); surfacePath(borders); g.setLineDash([2, 3]);
+      g.lineWidth = .7; g.lineCap = 'round';
+      g.strokeStyle = dark ? '#bdcddd38' : '#74839755'; g.stroke(); g.restore();
+    }
+    const light=g.createRadialGradient(cx-r*.4,cy-r*.55,0,cx,cy,r);
+    light.addColorStop(0,dark?'#d8eaff10':'#ffffff70'); light.addColorStop(.65,'#ffffff00'); light.addColorStop(1,dark?'#00000066':'#7c8b9b20');
+    sphere(r); g.fillStyle=light; g.fill(); g.restore();
+    sphere(r-.5); g.strokeStyle=dark?'#ffffff10':'#ffffffb3';g.lineWidth=1;g.stroke();
+    }
+    ctx.drawImage(surface,0,0,surface.width,surface.height,0,0,width,height);
+  }
+  function stopFlight() {
+    flight = null; delete root.dataset.flight;
+  }
+  function startFlight() {
+    if (!loaded || flight) return;
+    const origin = cities.find(city => city.kind === 'origin');
+    const home = cities.find(city => city.kind === 'home');
+    if (!origin || !home) return;
+    interacted = true;
+    const interpolate = d3.geoInterpolate(origin.coordinates,home.coordinates);
+    const midpoint = interpolate(.5);
+    const fits = [origin,home].every(city => {
+      if (d3.geoDistance(city.coordinates,[longitude,latitude]) > 1.2) return false;
+      const p = projection(city.coordinates);
+      return p[0]>42 && p[0]<width-42 && p[1]>80 && p[1]<height-90;
+    });
+    // A wider composition on touch screens leaves the route above the photo card.
+    if(width<600 || !fits || zoom>1.2) {
+      target = {longitude:midpoint[0],latitude:clamp(midpoint[1]-(width<600?36:20),-65,65),zoom:1};
+    } else target = null;
+    flight = {origin,home,interpolate,elapsed:0,still:reduced.matches};
+    root.dataset.flight = reduced.matches ? 'arrived' : 'flying';
+    status.textContent = language==='de'
+      ? name(origin)+' → '+name(home)+'. Von meiner Heimat zu meinem heutigen Zuhause.'
+      : name(origin)+' → '+name(home)+'. From my hometown to my home today.';
+    requestDraw();
+  }
+  function flightPoint(t) {
+    const coordinates = flight.interpolate(t);
+    const p = projection(coordinates);
+    const lift = Math.sin(Math.PI*t)*Math.min(76,radius*zoom*.17);
+    return {x:p[0],y:p[1]-lift,front:d3.geoDistance(coordinates,[longitude,latitude])<Math.PI/2-.015};
+  }
+  function drawFlight() {
+    if(!flight) return;
+    const age=flight.elapsed;
+    const progress=flight.still?1:clamp((age-250)/flightDuration,0,1);
+    const travelled=progress*progress*(3-2*progress);
+    const arrival=clamp((age-flightDuration-250)/1500,0,1);
+    const opacity=flight.still?1:1-clamp((age-6200)/900,0,1);
+    const route=(from,to)=>{
+      ctx.beginPath();let pen=false;
+      const steps=Math.max(2,Math.ceil((to-from)*90));
+      for(let i=0;i<=steps;i++){
+        const p=flightPoint(from+(to-from)*i/steps);
+        if(!p.front){pen=false;continue;}
+        if(pen)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);
+        pen=true;
+      }
+    };
+    ctx.save();ctx.globalAlpha=opacity;ctx.lineCap='round';ctx.lineJoin='round';
+    route(0,1);ctx.setLineDash([2,5]);ctx.strokeStyle=dark?'#ffb57b65':'#d378354a';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+    route(0,travelled);ctx.strokeStyle=dark?'#ffac6d':'#ef873f';ctx.lineWidth=1.6;ctx.stroke();
+    if(!flight.still && progress>0 && progress<1){
+      const p=flightPoint(travelled),next=flightPoint(Math.min(1,travelled+.003));
+      if(p.front){
+        const angle=Math.atan2(next.y-p.y,next.x-p.x);
+        const scale=(width<600?.68:.88)*(.6+.4*Math.sin(Math.PI*progress));
+        // A soft, offset shadow makes the plane float above the route.
+        ctx.save();ctx.translate(p.x+2,p.y+7);ctx.rotate(angle);ctx.scale(scale,scale);
+        ctx.fillStyle='#24374b14';ctx.fill(aircraft);ctx.restore();
+        ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);ctx.scale(scale,scale);
+        ctx.globalAlpha=opacity*Math.min(1,progress*10,(1-progress)*10);
+        ctx.shadowColor=dark?'#0007':'#34516b44';ctx.shadowBlur=5;ctx.shadowOffsetY=2;
+        ctx.fillStyle=dark?'#f5f8ff':'#ffffff';ctx.fill(aircraft);
+        ctx.shadowBlur=0;ctx.shadowOffsetY=0;ctx.strokeStyle=dark?'#ffbc86':'#dd823f';ctx.lineWidth=1.3;ctx.stroke(aircraft);
+        ctx.restore();
+      }
+    }
+    if(progress===1){
+      const p=projection(flight.home.coordinates);
+      if(d3.geoDistance(flight.home.coordinates,[longitude,latitude])<Math.PI/2-.015){
+        circle(p[0],p[1],flight.still?11:8+arrival*23);
+        ctx.strokeStyle=dark?'#ffb57b':'#ef873f';ctx.lineWidth=1.3;ctx.globalAlpha=opacity*(flight.still?.4:1-arrival);ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
   function draw() {
     if (!loaded || !width) return;
     ctx.setTransform(ratio,0,0,ratio,0,0); ctx.clearRect(0,0,width,height);
     project();
-    const [cx,cy] = projection.translate(), r = radius * zoom;
-    const ocean = ctx.createRadialGradient(cx-r*.35,cy-r*.5,r*.04,cx,cy,r);
-    ocean.addColorStop(0, dark ? '#303741' : '#ffffff');
-    ocean.addColorStop(.75,dark ? '#20262e' : '#fbfcfd');
-    ocean.addColorStop(1,dark ? '#171d25' : '#e7ebf0');
-    ctx.save(); circle(cx,cy,r); ctx.fillStyle=ocean; ctx.fill(); ctx.clip();
-    ctx.save(); ctx.translate(0,1.2); ctx.beginPath(); path(land); ctx.fillStyle=dark?'#10161b':'#cdd3db'; ctx.fill(); ctx.restore();
-    ctx.beginPath(); path(land); ctx.fillStyle=dark?'#414b58':'#e1e5e9'; ctx.fill();
-    ctx.strokeStyle=dark?'#59657360':'#ffffffaa'; ctx.lineWidth=.55; ctx.stroke();
-    if (borders) {
-      ctx.save(); ctx.beginPath(); path(borders); ctx.setLineDash([2, 3]);
-      ctx.lineWidth = .7; ctx.lineCap = 'round';
-      ctx.strokeStyle = dark ? '#bdcddd38' : '#74839755'; ctx.stroke(); ctx.restore();
-    }
-    const light=ctx.createRadialGradient(cx-r*.4,cy-r*.55,0,cx,cy,r);
-    light.addColorStop(0,dark?'#ffffff08':'#ffffff5c'); light.addColorStop(.65,'#ffffff00'); light.addColorStop(1,dark?'#00000066':'#7c8b9b20');
-    circle(cx,cy,r); ctx.fillStyle=light; ctx.fill(); ctx.restore();
-    circle(cx,cy,r-.5); ctx.strokeStyle=dark?'#ffffff10':'#ffffffb3';ctx.lineWidth=1;ctx.stroke();
+    drawSurface();
     visiblePoints=[];
     cities.forEach(city => {
       if (d3.geoDistance(city.coordinates,[longitude,latitude]) > Math.PI/2-.035) return;
       const p=projection(city.coordinates);
       if (p[0]<-10 || p[0]>width+10 || p[1]<-10 || p[1]>height-65) return;
       visiblePoints.push({city,p});
-      if (city.kind !== 'visited') return; // Special cities use the star and pin above the canvas.
+      if (city.kind !== 'visited') return; // Special cities use the orange dot and pin above the canvas.
       const selected=city===active || city===hovered;
       if (selected) {
         circle(p[0],p[1],8); ctx.fillStyle=city.kind==='origin'?'#f47a3624':'#007aff20'; ctx.fill();
@@ -170,6 +274,7 @@
       ctx.fillStyle=city.kind==='origin'?'#f47a36':dark?'#62b0ff':'#007aff';ctx.fill();
       if(selected) {ctx.strokeStyle=dark?'#222b35':'#fff';ctx.lineWidth=1.6;ctx.stroke();}
     });
+    drawFlight();
     special.forEach(button=>{
       const point=visiblePoints.find(p=>p.city.kind===button.dataset.globeSpecial);
       if(point) placeMarker(button,point.p,point.city.kind);
@@ -180,11 +285,13 @@
     if(spot && highlight !== dismissed && !pointer?.moved) {
       tooltip.hidden=false;
       updatePreview(highlight);
-      const tx=clamp(spot.p[0]-tooltip.offsetWidth/2,8,width-tooltip.offsetWidth-8);
+      const journey = flight && highlight.kind==='origin';
+      const tx=clamp(journey && width>=600 ? spot.p[0]+24 : spot.p[0]-tooltip.offsetWidth/2,8,width-tooltip.offsetWidth-8);
       const above = spot.p[1]-tooltip.offsetHeight-(highlight.kind==='home'?34:16);
       const below = spot.p[1]+18;
       const preferred = above < 8 && below+tooltip.offsetHeight < height-65 ? below : above;
-      const ty=clamp(preferred,8,Math.max(8,height-tooltip.offsetHeight-65));
+      const photoY = journey ? (width<600 ? height-tooltip.offsetHeight-65 : spot.p[1]-tooltip.offsetHeight*.5) : preferred;
+      const ty=clamp(photoY,8,Math.max(8,height-tooltip.offsetHeight-65));
       tooltip.style.transform=`translate(${tx}px,${ty}px)`;
     } else tooltip.hidden=true;
     updateButtons();
@@ -204,12 +311,25 @@
     } else if(!interacted && !reduced.matches && !hovered && !pointer) {
       longitude=32+Math.sin(time*.000075)*7; latitude=36+Math.sin(time*.00005)*1.7; moving=true;
     }
+    if(flight && !flight.still){
+      if(reduced.matches){flight.still=true;root.dataset.flight='arrived';dirty=true;}
+      else {
+        flight.elapsed+=dt;moving=true;
+        if(flight.elapsed>=flightDuration+250 && root.dataset.flight!=='arrived'){
+          root.dataset.flight='arrived';
+          status.textContent=name(flight.home)+(language==='de'?' — heute zu Hause.':' — home now.');
+        }
+        if(flight.elapsed>=7100)stopFlight();
+      }
+    }
     if(dirty || moving) { draw(); dirty=false; }
     if(moving) raf=requestAnimationFrame(frame);
   }
   function focusCity(city) {
     clearTimeout(hoverTimer); dismissed=null; interacted=true; hovered=null; active=city;
     picker.value=String(city.id);
+    if(city.kind==='origin'){ startFlight(); requestDraw(); return; }
+    stopFlight();
     target={longitude:city.coordinates[0],latitude:city.coordinates[1]-(width<600?(city.photo?-9:4):13),zoom:width<600?1.65:1.7};
     status.textContent=name(city)+' — '+country(city)+(city.kind==='home'?' · '+words.home:city.kind==='origin'?' · '+words.origin:'');
     requestDraw();
@@ -222,7 +342,7 @@
   }
   canvas.addEventListener('pointerdown',event=>{
     if(!loaded || (event.button!==0 && event.pointerType==='mouse')) return;
-    clearTimeout(hoverTimer); dismissed=null; pauseIdle(); hovered=null;
+    clearTimeout(hoverTimer); dismissed=null; stopFlight(); pauseIdle(); hovered=null;
     pointer={id:event.pointerId,x:event.clientX,y:event.clientY,longitude,latitude,moved:false};
     canvas.setPointerCapture(event.pointerId);
   });
@@ -255,16 +375,16 @@
     const city = () => cities.find(c => c.kind === button.dataset.globeSpecial);
     const show = () => showHover(city() || null);
     const hide = clearHoverLater;
-    button.addEventListener('pointerenter', show);
+    button.addEventListener('pointerenter', event => { if(event.pointerType!=='touch') show(); });
     button.addEventListener('pointerleave', hide);
     button.addEventListener('focus', show);
     button.addEventListener('blur', hide);
     button.addEventListener('click', () => { const place = city(); if (place) focusCity(place); });
   });
   root.querySelectorAll('[data-globe-zoom]').forEach(button=>button.addEventListener('click',()=>{
-    interacted=true;target={longitude,latitude,zoom:clamp((target?.zoom || zoom)+Number(button.dataset.globeZoom)*.5,1,3.5)};requestDraw();
+    stopFlight();interacted=true;target={longitude,latitude,zoom:clamp((target?.zoom || zoom)+Number(button.dataset.globeZoom)*.5,1,3.5)};requestDraw();
   }));
-  function reset() {clearTimeout(hoverTimer);dismissed=null;interacted=true;active=null;hovered=null;picker.value='';target={longitude:32,latitude:36,zoom:1};requestDraw();}
+  function reset() {stopFlight();clearTimeout(hoverTimer);dismissed=null;interacted=true;active=null;hovered=null;picker.value='';target={longitude:32,latitude:36,zoom:1};requestDraw();}
   root.querySelector('[data-globe-reset]').addEventListener('click',reset);
   function loadScript(file) {
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=asset('vendor/globe/'+file);s.onload=resolve;s.onerror=reject;document.head.append(s);});
@@ -280,7 +400,7 @@
         loadScript('topojson-client.min.js')
       ]);
       cities=places;land=topojson.feature(world,world.objects.land);borders=boundaries;
-      projection=d3.geoOrthographic().clipAngle(90).precision(.45);path=d3.geoPath(projection,ctx);
+      projection=d3.geoOrthographic().clipAngle(90).precision(.45);
       loaded=true;root.dataset.ready='true';translate();resize();requestDraw();
     } catch(error) {
       const p=document.createElement('p');p.className='travel-globe__fallback';p.textContent=words.error;root.append(p);

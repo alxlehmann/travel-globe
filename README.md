@@ -4,7 +4,7 @@
 
 [Open the live demo →](https://alxlehmann.github.io/travel-globe/)
 
-An interactive globe for the places that stay with you. Soft land relief, quiet country borders, and a constellation of places visited — with a star for your hometown and a pin for where you live now.
+An interactive globe for the places that stay with you. Soft land relief, quiet country borders, and a constellation of places visited — with an orange dot for your hometown and a pin for where you live now.
 
 Built with vanilla JavaScript, Canvas 2D, and D3 Geo. Self-hosted from coastlines to city coordinates. No API keys, map subscriptions, framework, or build step.
 
@@ -15,7 +15,8 @@ Built with vanilla JavaScript, Canvas 2D, and D3 Geo. Self-hosted from coastline
 Drag to turn the globe. Select a place to bring it into view. Hover a dot to see its name, or use the place selector when a cluster gets too dense.
 
 - **City postcards.** Open a place to see a photograph, its name, and its country. Small WebP images load on demand, with linked photographer and licence credits.
-- **Personal markers.** An orange star for your hometown; a matching pin for your current home.
+- **Personal markers.** An orange dot for your hometown; a matching pin for your current home.
+- **A story in motion.** Hover your hometown, tap it, or activate its marker with the keyboard: a small plane follows a raised arc to your current home, leaving a fine trail and a soft arrival ring. The connection illustrates a move, not an actual flight itinerary.
 - **A quiet map.** Subtle dashed borders, a softly shaded sphere, and a gentle fade into the page.
 - **Touch interaction.** Horizontal dragging rotates the globe on phones while vertical gestures still scroll the page. Zoom buttons work with mouse, touch, and keyboard.
 - **Light and dark.** Pale relief by day, graphite tones by night.
@@ -141,9 +142,10 @@ D3 Geo projects geographic data onto an orthographic sphere. Canvas draws the la
 
 - Map data and rendering libraries load when the globe approaches the viewport.
 - Continuous animation targets approximately 30 fps; display density is capped at 1.75×.
+- The land surface is cached between view changes, so the flight animation reuses it instead of repeatedly projecting every coastline.
 - Rendering stops when the globe is far offscreen or the browser tab is hidden.
 - Idle motion stops after interaction. The globe then redraws for user input and view transitions.
-- Reduced-motion preferences disable idle drift and make view transitions immediate.
+- Reduced-motion preferences disable idle drift, make view transitions immediate, and show a static relocation arc instead of a moving plane.
 - A native grouped place selector provides a keyboard-accessible alternative to pointing at small dots. Icon buttons have accessible names, and selected places are announced through a live region.
 
 The base map data and vendor scripts total roughly **950 KB before HTTP compression**. The optional photo collection adds about **2 MB on disk**, but no photographs load until a place is opened (approximately **33 KB per image** on average). Enable gzip or Brotli on your host and use asset caching. Rendering cost still depends on the device; this is an animated map, not a static image.
@@ -176,4 +178,4 @@ Created by [Alexander Lehmann](https://alex-lehmann.com/).
 
 Original code is licensed under [MIT](LICENSE). Map data comes from [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) via [World Atlas](https://github.com/topojson/world-atlas), and is public domain. D3 and TopoJSON retain their ISC licences. Photographs retain their individual CC BY, CC BY-SA, CC0 or public-domain terms, as listed on the [photo credits page](https://alxlehmann.github.io/travel-globe/sources.html). See [third-party notices](THIRD_PARTY_NOTICES.md).
 
-Points represent approximate locations, not routes. Geographic boundaries follow the source dataset and are provided for visual context.
+Points represent approximate locations. The relocation arc is illustrative, not a flight itinerary. Geographic boundaries follow the source dataset and are provided for visual context.
