@@ -16,3 +16,7 @@ Complete library copyright and licence texts are in `assets/vendor/globe/`.
 Natural Earth publishes its map data in the public domain: https://www.naturalearthdata.com/about/terms-of-use/.
 
 The travel history is supplied by Alexander Lehmann. Place names are normalized for English and German, and marker coordinates are approximate. These locations do not represent live tracking.
+
+## City photographs
+
+The files in `assets/img/travel/` are from Wikimedia Commons and retain their individual licences; they are not covered by the code’s MIT licence. Complete photographer names, source-file links and licence links are provided in `sources.html`, with machine-readable records in `assets/data/travel-places.json`. Local copies are resized and converted to WebP. The interface may crop the displayed view. The same original licence applies to each image copy.

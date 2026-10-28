@@ -14,6 +14,7 @@ Built with vanilla JavaScript, Canvas 2D, and D3 Geo. Self-hosted from coastline
 
 Drag to turn the globe. Select a place to bring it into view. Hover a dot to see its name, or use the place selector when a cluster gets too dense.
 
+- **City postcards.** Open a place to see a photograph, its name, and its country. Small WebP images load on demand, with linked photographer and licence credits.
 - **Personal markers.** An orange star for your hometown; a matching pin for your current home.
 - **A quiet map.** Subtle dashed borders, a softly shaded sphere, and a gentle fade into the page.
 - **Touch interaction.** Horizontal dragging rotates the globe on phones while vertical gestures still scroll the page. Zoom buttons work with mouse, touch, and keyboard.
@@ -77,6 +78,25 @@ Coordinates are **`[longitude, latitude]`**, in degrees. Give each place a uniqu
 
 Use `origin` for one hometown, `home` for one current home, and `visited` for other places. Either special marker may be omitted. Update the initial marker accessibility labels and the `<noscript>` text in `index.html` when changing the demo content; loaded marker labels are generated from the data.
 
+### Optional photographs
+
+Each place may include a `photo` object:
+
+```json
+"photo": {
+  "src": "img/travel/your-city.webp",
+  "author": "Photographer name",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "source": "https://commons.wikimedia.org/wiki/File:Your_photo.jpg",
+  "title": "Your photo.jpg"
+}
+```
+
+Image paths are relative to `assets/`. Keep images small (the demo uses up to 480 pixels wide). Omit `photo` for a text-only place card. Update `sources.html#photo-ID` with the full photographer, source and licence attribution for every replacement; the tooltip links there using the place’s numeric `id`. Copy the credits page when embedding the demo, or adapt the credit URL in `updatePreview()`.
+
+The included photographs have **their own licences**; the repository’s MIT licence does not apply to them.
+
 ### Embed it in a page
 
 1. Copy the `assets` directory into your project, preserving its internal paths.
@@ -126,7 +146,7 @@ D3 Geo projects geographic data onto an orthographic sphere. Canvas draws the la
 - Reduced-motion preferences disable idle drift and make view transitions immediate.
 - A native grouped place selector provides a keyboard-accessible alternative to pointing at small dots. Icon buttons have accessible names, and selected places are announced through a live region.
 
-The data and vendor scripts total roughly **950 KB before HTTP compression**. Enable gzip or Brotli on your host and use asset caching. Rendering cost still depends on the device; this is an animated map, not a static image.
+The base map data and vendor scripts total roughly **950 KB before HTTP compression**. The optional photo collection adds about **2 MB on disk**, but no photographs load until a place is opened (approximately **33 KB per image** on average). Enable gzip or Brotli on your host and use asset caching. Rendering cost still depends on the device; this is an animated map, not a static image.
 
 Requires a modern browser with Canvas 2D, `fetch`, Pointer Events, `IntersectionObserver`, `ResizeObserver`, and `Intl.DisplayNames`.
 
@@ -134,7 +154,9 @@ Requires a modern browser with Canvas 2D, `fetch`, Pointer Events, `Intersection
 
 ```text
 index.html                         Standalone demo and reusable globe markup
+sources.html                       Full photo attribution, linked from each card
 assets/
+  img/travel/                      On-demand city photographs (WebP)
   css/demo.css                     Demo shell and theme variables
   css/travel-globe.css              Globe, markers, tooltips, controls
   js/demo.js                       Demo theme and language controls
@@ -152,6 +174,6 @@ THIRD_PARTY_NOTICES.md              Data and dependency credits
 
 Created by [Alexander Lehmann](https://alex-lehmann.com/).
 
-Original code is licensed under [MIT](LICENSE). Map data comes from [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) via [World Atlas](https://github.com/topojson/world-atlas), and is public domain. D3 and TopoJSON retain their ISC licences. See [third-party notices](THIRD_PARTY_NOTICES.md).
+Original code is licensed under [MIT](LICENSE). Map data comes from [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) via [World Atlas](https://github.com/topojson/world-atlas), and is public domain. D3 and TopoJSON retain their ISC licences. Photographs retain their individual CC BY, CC BY-SA, CC0 or public-domain terms, as listed on the [photo credits page](https://alxlehmann.github.io/travel-globe/sources.html). See [third-party notices](THIRD_PARTY_NOTICES.md).
 
 Points represent approximate locations, not routes. Geographic boundaries follow the source dataset and are provided for visual context.

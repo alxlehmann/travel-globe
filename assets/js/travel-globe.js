@@ -9,6 +9,19 @@
   const ctx = canvas.getContext('2d');
   const picker = root.querySelector('[data-globe-picker]');
   const tooltip = root.querySelector('.globe-tooltip');
+  const tooltipName = tooltip.querySelector('strong');
+  const tooltipCountry = tooltip.querySelector('span');
+  const photo = document.createElement('img');
+  photo.className = 'globe-tooltip__photo'; photo.decoding = 'async'; photo.hidden = true;
+  const tooltipCopy = document.createElement('div'); tooltipCopy.className = 'globe-tooltip__copy';
+  tooltipCopy.append(tooltipName, tooltipCountry);
+  const photoCredit = document.createElement('a'); photoCredit.className = 'globe-tooltip__credit'; photoCredit.hidden = true;
+  photoCredit.target = '_blank'; photoCredit.rel = 'noopener';
+  tooltip.replaceChildren(photo, tooltipCopy, photoCredit);
+  tooltip.id = 'globe-place-preview';
+  tooltip.setAttribute('role', 'group');
+  tooltip.setAttribute('aria-label', 'Place preview');
+  let displayedPhoto = '', hoverTimer = 0, tooltipEngaged = false, dismissed = null;
   const status = root.querySelector('[role="status"]');
   const special = [...root.querySelectorAll('[data-globe-special]')];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -75,6 +88,51 @@
     button.style.transform = `translate(${x}px,${y}px)`;
     button.style.opacity = '1'; button.style.visibility = 'visible';
   }
+  function clearHoverLater() {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => { if (!tooltipEngaged && !tooltip.contains(document.activeElement)) { hovered = null; requestDraw(); } }, 220);
+  }
+  function showHover(city) {
+    clearTimeout(hoverTimer);
+    if (city !== hovered) { hovered = city; dismissed = null; requestDraw(); }
+  }
+  function updatePreview(city) {
+    tooltipName.textContent = name(city);
+    tooltipCountry.textContent = country(city);
+    tooltip.setAttribute('aria-label', name(city));
+    const image = city.photo;
+    const next = image?.src || '';
+    if (next !== displayedPhoto) {
+      displayedPhoto = next;
+      photo.hidden = !next; photoCredit.hidden = !next;
+      tooltip.classList.toggle('has-photo', Boolean(next));
+      photo.classList.remove('is-loaded');
+      if (next) photo.src = asset(next);
+      else photo.removeAttribute('src');
+    }
+    if (next) {
+      photo.alt = language === 'de' ? 'Ansicht von ' + name(city) : 'View of ' + name(city);
+      const label = image.author.length <= 32 ? (language === 'de' ? 'Foto: ' : 'Photo: ') + image.author : (language === 'de' ? 'Bildnachweis' : 'Photo credits');
+      photoCredit.textContent = label + ' ↗';
+      photoCredit.href = new URL('../../sources.html?lang=' + language + '#photo-' + city.id, scriptURL).href;
+      photoCredit.title = image.author + ' · ' + image.license;
+      photoCredit.setAttribute('aria-label', (language === 'de' ? 'Bildnachweis für ' : 'Photo credits for ') + name(city) + ': ' + image.author + ', ' + image.license);
+    }
+  }
+  photo.addEventListener('load', () => { photo.classList.add('is-loaded'); requestDraw(); });
+  photo.addEventListener('error', () => {
+    photo.hidden = true; photoCredit.hidden = true; tooltip.classList.remove('has-photo'); requestDraw();
+  });
+  tooltip.addEventListener('pointerenter', () => { tooltipEngaged = true; clearTimeout(hoverTimer); });
+  tooltip.addEventListener('pointerleave', () => { tooltipEngaged = false; clearHoverLater(); });
+  tooltip.addEventListener('focusin', () => clearTimeout(hoverTimer));
+  tooltip.addEventListener('focusout', clearHoverLater);
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || tooltip.hidden) return;
+    dismissed = hovered || active; hovered = null;
+    if (tooltip.contains(document.activeElement)) picker.focus();
+    requestDraw();
+  });
   function draw() {
     if (!loaded || !width) return;
     ctx.setTransform(ratio,0,0,ratio,0,0); ctx.clearRect(0,0,width,height);
@@ -119,12 +177,14 @@
     });
     const highlight=hovered || active;
     const spot=visiblePoints.find(p=>p.city===highlight);
-    if(spot && !pointer?.moved) {
+    if(spot && highlight !== dismissed && !pointer?.moved) {
       tooltip.hidden=false;
-      tooltip.querySelector('strong').textContent=name(highlight);
-      tooltip.querySelector('span').textContent=country(highlight);
+      updatePreview(highlight);
       const tx=clamp(spot.p[0]-tooltip.offsetWidth/2,8,width-tooltip.offsetWidth-8);
-      const ty=clamp(spot.p[1]-tooltip.offsetHeight-(highlight.kind==='home'?34:16),8,height-tooltip.offsetHeight-65);
+      const above = spot.p[1]-tooltip.offsetHeight-(highlight.kind==='home'?34:16);
+      const below = spot.p[1]+18;
+      const preferred = above < 8 && below+tooltip.offsetHeight < height-65 ? below : above;
+      const ty=clamp(preferred,8,Math.max(8,height-tooltip.offsetHeight-65));
       tooltip.style.transform=`translate(${tx}px,${ty}px)`;
     } else tooltip.hidden=true;
     updateButtons();
@@ -148,9 +208,9 @@
     if(moving) raf=requestAnimationFrame(frame);
   }
   function focusCity(city) {
-    interacted=true; hovered=null; active=city;
+    clearTimeout(hoverTimer); dismissed=null; interacted=true; hovered=null; active=city;
     picker.value=String(city.id);
-    target={longitude:city.coordinates[0],latitude:city.coordinates[1]-(width<600?4:13),zoom:width<600?1.65:1.7};
+    target={longitude:city.coordinates[0],latitude:city.coordinates[1]-(width<600?(city.photo?-9:4):13),zoom:width<600?1.65:1.7};
     status.textContent=name(city)+' — '+country(city)+(city.kind==='home'?' · '+words.home:city.kind==='origin'?' · '+words.origin:'');
     requestDraw();
   }
@@ -162,7 +222,7 @@
   }
   canvas.addEventListener('pointerdown',event=>{
     if(!loaded || (event.button!==0 && event.pointerType==='mouse')) return;
-    pauseIdle(); hovered=null;
+    clearTimeout(hoverTimer); dismissed=null; pauseIdle(); hovered=null;
     pointer={id:event.pointerId,x:event.clientX,y:event.clientY,longitude,latitude,moved:false};
     canvas.setPointerCapture(event.pointerId);
   });
@@ -176,7 +236,7 @@
         active=null; picker.value=''; requestDraw();
       }
     } else if(event.pointerType!=='touch') {
-      const next=nearest(event);if(next!==hovered){hovered=next;requestDraw();}
+      const next=nearest(event);if(next) showHover(next); else clearHoverLater();
       canvas.style.cursor=next?'pointer':'grab';
     }
   });
@@ -189,12 +249,12 @@
   };
   canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);
   canvas.addEventListener('lostpointercapture',finish);
-  canvas.addEventListener('pointerleave',()=>{hovered=null;requestDraw();});
+  canvas.addEventListener('pointerleave',clearHoverLater);
   picker.addEventListener('change',()=>{const city=cities.find(c=>String(c.id)===picker.value);if(city)focusCity(city);else reset();});
   special.forEach(button => {
     const city = () => cities.find(c => c.kind === button.dataset.globeSpecial);
-    const show = () => { hovered = city() || null; requestDraw(); };
-    const hide = () => { if (hovered === city()) hovered = null; requestDraw(); };
+    const show = () => showHover(city() || null);
+    const hide = clearHoverLater;
     button.addEventListener('pointerenter', show);
     button.addEventListener('pointerleave', hide);
     button.addEventListener('focus', show);
@@ -204,7 +264,7 @@
   root.querySelectorAll('[data-globe-zoom]').forEach(button=>button.addEventListener('click',()=>{
     interacted=true;target={longitude,latitude,zoom:clamp((target?.zoom || zoom)+Number(button.dataset.globeZoom)*.5,1,3.5)};requestDraw();
   }));
-  function reset() {interacted=true;active=null;hovered=null;picker.value='';target={longitude:32,latitude:36,zoom:1};requestDraw();}
+  function reset() {clearTimeout(hoverTimer);dismissed=null;interacted=true;active=null;hovered=null;picker.value='';target={longitude:32,latitude:36,zoom:1};requestDraw();}
   root.querySelector('[data-globe-reset]').addEventListener('click',reset);
   function loadScript(file) {
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=asset('vendor/globe/'+file);s.onload=resolve;s.onerror=reject;document.head.append(s);});
@@ -214,7 +274,7 @@
     try {
       const [world,places,boundaries]=await Promise.all([
         fetch(asset('data/globe-land-50m.json')).then(r=>{if(!r.ok)throw Error(r.status);return r.json();}),
-        fetch(asset('data/travel-places.json')).then(r=>{if(!r.ok)throw Error(r.status);return r.json();}),
+        fetch(asset('data/travel-places.json?v=20261028-photos')).then(r=>{if(!r.ok)throw Error(r.status);return r.json();}),
         fetch(asset('data/globe-borders-50m.json')).then(r=>{if(!r.ok)throw Error(r.status);return r.json();}).catch(()=>null),
         loadScript('d3-array.min.js').then(()=>loadScript('d3-geo.min.js')),
         loadScript('topojson-client.min.js')

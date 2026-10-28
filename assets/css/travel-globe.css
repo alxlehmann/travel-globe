@@ -11,7 +11,7 @@
 .globe-place--home svg { width: 22px; height: 26px; fill: var(--globe-orange); filter: drop-shadow(0 1px 2px #52260020); }
 .globe-place--home circle { fill: white; stroke: none; }
 .globe-place:hover svg { filter: drop-shadow(0 2px 4px #152e4d50); }
-.globe-tooltip { position: absolute; z-index: 5; width: max-content; max-width: calc(100% - 24px); padding: 10px 15px; border: 1px solid #ffffffbb; border-radius: 14px; background: #fffffff5; box-shadow: 0 5px 24px #182e4c15; pointer-events: none; }
+.globe-tooltip { position: absolute; z-index: 5; width: max-content; max-width: calc(100% - 24px); padding: 10px 15px; border: 1px solid #ffffffbb; border-radius: 14px; background: #fffffff5; box-shadow: 0 5px 24px #182e4c15; pointer-events: auto; }
 .globe-tooltip strong { display: block; font-weight: 550; font-size: 13px; line-height: 1.4; }
 .globe-tooltip span { display: block; margin-top: 2px; color: var(--secondary); font-size: 10px; line-height: 1.4; }
 .travel-globe__controls { position: absolute; z-index: 4; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; max-width: calc(100% - 16px); }
@@ -39,3 +39,17 @@
 }
 @media (max-width: 370px) { .globe-picker { width: 158px; } .globe-zoom button { width: 34px; } }
 @media (prefers-reduced-motion: reduce) { .globe-place { transition: none; } }
+
+/* City postcards: images are requested only for the opened place. */
+.globe-tooltip.has-photo { width: 232px; padding: 0; overflow: hidden; border-radius: 18px; box-shadow: 0 8px 30px #182e4c1b, 0 2px 6px #182e4c08; }
+.globe-tooltip__photo { display: block; width: 100%; height: 132px; max-width: none; object-fit: cover; background: #e3e7ec; opacity: 0; transition: opacity .18s ease; }
+.globe-tooltip__photo.is-loaded { opacity: 1; }
+.globe-tooltip.has-photo .globe-tooltip__copy { padding: 10px 13px 0; }
+.globe-tooltip__credit { display: block; padding: 5px 13px 10px; color: var(--secondary); font-size: 9px; line-height: 1.4; text-decoration: none; }
+.globe-tooltip__credit:hover { color: var(--ink); text-decoration: underline; }
+.globe-tooltip__credit:focus-visible { outline-offset: -3px; border-radius: 6px; }
+@media (max-width: 700px) {
+  .globe-tooltip.has-photo { width: 208px; border-radius: 15px; }
+  .globe-tooltip__photo { height: 114px; }
+}
+@media (prefers-reduced-motion: reduce) { .globe-tooltip__photo { transition: none; } }

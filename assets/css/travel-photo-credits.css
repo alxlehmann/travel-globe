@@ -1,0 +1,14 @@
+.travel-photo-credits { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 28px 40px; margin: 28px 0 0; padding: 0; list-style: none; }
+.travel-photo-credits li { min-width: 0; padding-top: 16px; border-top: 1px solid var(--line, #dedee3); scroll-margin-top: 32px; }
+.travel-photo-credits h3 { font-size: 16px; margin: 0 0 8px; }
+.travel-photo-credits p { font-size: 12px; line-height: 1.7; margin: 0; overflow-wrap: anywhere; }
+.travel-photo-credits li:target { border-color: #007aff; }
+.photo-credit-name--de { display: none; }
+html[lang="de"] .photo-credit-name--de { display: inline; }
+html[lang="de"] .photo-credit-name--en { display: none; }
+@media (max-width: 600px) { .travel-photo-credits { grid-template-columns: 1fr; gap: 20px; } }
+
+.photo-credits-page { padding-top: 28px; padding-bottom: 40px; }
+.photo-credits-page h1 { font-size: clamp(32px,5vw,56px); }
+.credits-intro { max-width: 720px; margin: 24px 0 40px; color: var(--secondary); line-height: 1.7; }
+.travel-photo-credits a { text-decoration: underline; text-underline-offset: 3px; }
